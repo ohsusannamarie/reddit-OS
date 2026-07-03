@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reddit OS | Post Preflight</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #171a23;
+      --panel-2: #202431;
+      --text: #f4f5f7;
+      --muted: #a7adbd;
+      --line: #313747;
+      --accent: #ff4500;
+      --accent-2: #ffb199;
+      --good: #7ee787;
+      --warn: #f2cc60;
+      --bad: #ff7b72;
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at top left, rgba(255,69,0,.15), transparent 36%), var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    a { color: var(--accent-2); text-decoration: none; }
+    header {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 48px 24px 28px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--accent-2);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      font-size: 11px;
+      margin-bottom: 10px;
+    }
+    h1 {
+      font-size: clamp(38px, 6vw, 78px);
+      line-height: .9;
+      letter-spacing: -.05em;
+      font-weight: 900;
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 16px;
+      margin-top: 14px;
+      max-width: 680px;
+    }
+    .header-badge {
+      background: rgba(255,69,0,.12);
+      border: 1px solid rgba(255,69,0,.3);
+      color: var(--accent-2);
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      align-self: flex-start;
+      margin-top: 8px;
+    }
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+      display: grid;
+      grid-template-columns: minmax(0,1.1fr) minmax(320px,.9fr);
+      gap: 20px;
+    }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .card h2 {
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .card-sub {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+    .field-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      margin: 20px 0 7px;
+    }
+    .field-label:first-of-type { margin-top: 0; }
+    input[type=text], textarea, select {
+      width: 100%;
+      background: #0c0e13;
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font: inherit;
+      font-size: 14px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input[type=text]:focus, textarea:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(255,69,0,.13);
+    }
+    textarea { min-height: 140px; resize: vertical; }
+    select option { background: #1a1d2a; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+    .title-wrap { position: relative; }
+    .title-counter {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 11px;
+      color: var(--muted);
+      pointer-events: none;
+      font-weight: 700;
+    }
+    .title-counter.warn { color: var(--warn); }
+    .title-counter.bad { color: var(--bad); }
+    .title-wrap input { padding-right: 52px; }
+    .btn {
+      border: 0;
+      cursor: pointer;
+      padding: 13px 20px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 14px;
+      transition: transform .12s, filter .12s, opacity .15s;
+      width: 100%;
+      margin-top: 16px;
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.07); }
+    .btn:active:not(:disabled) { transform: scale(.98); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #ff7340);
+      color: #180800;
+      box-shadow: 0 8px 24px rgba(255,69,0,.22);
+    }
+    .btn-ai {
+      background: linear-gradient(135deg, #5a3af8, #8b5cf6);
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(90,58,248,.25);
+      margin-top: 12px;
+    }
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .score-wrap {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 18px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 480px) { .score-wrap { grid-template-columns: 1fr; } }
+    .score-ring {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: conic-gradient(var(--accent) calc(var(--pct,0) * 1%), var(--panel-2) 0);
+      position: relative;
+      flex-shrink: 0;
+    }
+    .score-ring::after {
+      content: "";
+      width: 108px;
+      height: 108px;
+      background: var(--panel);
+      border-radius: 50%;
+      position: absolute;
+    }
+    .score-num {
+      position: relative;
+      z-index: 2;
+      font-size: 40px;
+      font-weight: 900;
+      letter-spacing: -.04em;
+    }
+    .verdict-block h3 { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+    .verdict-block p { font-size: 13px; color: var(--muted); }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+    .pill {
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .pill.good { color: var(--good); border-color: rgba(126,231,135,.35); }
+    .pill.warn { color: var(--warn); border-color: rgba(242,204,96,.35); }
+    .pill.bad  { color: var(--bad);  border-color: rgba(255,123,114,.35); }
+    .metrics { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+    .metric-row { display: flex; flex-direction: column; gap: 4px; }
+    .metric-head {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+    }
+    .metric-head strong { color: var(--text); }
+    .metric-head span { color: var(--muted); font-weight: 700; }
+    .bar {
+      background: var(--panel-2);
+      border-radius: 999px;
+      height: 6px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), #ffcf5c);
+      transition: width .4s ease;
+    }
+    .suggestions { display: flex; flex-direction: column; gap: 8px; }
+    .suggestion {
+      background: #0c0e13;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .suggestion strong { color: var(--accent-2); display: block; margin-bottom: 3px; }
+    .divider {
+      height: 1px;
+      background: var(--line);
+      margin: 20px 0;
+    }
+    .ai-section { margin-top: 4px; }
+    .ai-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #a78bfa;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      margin-bottom: 10px;
+    }
+    .ai-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #7c3aed;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .ai-result {
+      background: rgba(90,58,248,.08);
+      border: 1px solid rgba(139,92,246,.25);
+      border-radius: 12px;
+      padding: 14px;
+      display: none;
+    }
+    .ai-result.visible { display: block; }
+    .ai-result-label {
+      font-size: 11px;
+      font-weight: 800;
+      color: #a78bfa;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      margin-bottom: 8px;
+    }
+    .ai-title-option {
+      background: #0c0e13;
+      border: 1px solid rgba(139,92,246,.2);
+      border-radius: 10px;
+      padding: 11px 13px;
+      margin-bottom: 8px;
+      font-size: 14px;
+      line-height: 1.5;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .ai-title-option:last-child { margin-bottom: 0; }
+    .ai-title-option:hover { border-color: #7c3aed; background: rgba(124,58,237,.08); }
+    .ai-title-option .option-meta {
+      font-size: 11px;
+      color: #a78bfa;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .ai-title-option .option-text { color: var(--text); }
+    .ai-thinking {
+      text-align: center;
+      padding: 20px;
+      color: var(--muted);
+      font-size: 13px;
+      display: none;
+    }
+    .ai-thinking.visible { display: block; }
+    .ai-error {
+      color: var(--bad);
+      font-size: 13px;
+      padding: 10px 0;
+      display: none;
+    }
+    .ai-error.visible { display: block; }
+    .anti-patterns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .anti-pill {
+      background: rgba(255,123,114,.1);
+      border: 1px solid rgba(255,123,114,.25);
+      color: var(--bad);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .checklist { grid-column: 1 / -1; }
+    .checklist-items { display: flex; flex-direction: column; gap: 0; }
+    .check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 11px 0;
+      border-bottom: 1px solid rgba(255,255,255,.05);
+      cursor: pointer;
+    }
+    .check-item:last-child { border-bottom: 0; }
+    .check-item input[type=checkbox] {
+      width: 16px;
+      height: 16px;
+      margin-top: 2px;
+      flex-shrink: 0;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .check-item span {
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .check-item.checked span { color: var(--muted); text-decoration: line-through; }
+    .templates-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    @media (max-width: 700px) { .templates-grid { grid-template-columns: 1fr; } }
+    .template-card {
+      background: #0c0e13;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 13px 14px;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    .template-card:hover { border-color: var(--accent); }
+    .template-name {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--accent-2);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 6px;
+    }
+    .template-text {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+      font-family: monospace;
+    }
+    .template-card:hover .template-text { color: var(--text); }
+    footer {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px 48px;
+      color: var(--muted);
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      border-top: 1px solid var(--line);
+      padding-top: 24px;
+    }
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--panel);
+      border: 1px solid var(--good);
+      color: var(--good);
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .2s, transform .2s;
+      pointer-events: none;
+      z-index: 100;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="eyebrow">◆ Reddit OS</div>
+    <h1>Post Preflight</h1>
+    <p class="subtitle">Score your post idea. Rewrite weak titles with AI. Ship something worth scrolling to.</p>
+  </div>
+  <div class="header-badge">✦ Now with AI title rewrites</div>
+</header>
+
+<main>
+
+  <!-- LEFT: Input card -->
+  <section class="card">
+    <h2>Build the post</h2>
+    <p class="card-sub">Fill in what you have. The scorer and AI rewriter work from whatever you give them.</p>
+
+    <label class="field-label" for="subreddit">Target subreddit</label>
+    <input type="text" id="subreddit" placeholder="e.g. r/mildlyinteresting, r/ADHD, r/homebrewing" />
+
+    <label class="field-label" for="title">Draft title</label>
+    <div class="title-wrap">
+      <input type="text" id="title" placeholder="I've lived here three years and suddenly found these on my porch couch" />
+      <span class="title-counter" id="titleCounter">0</span>
+    </div>
+    <div class="anti-patterns" id="antiPatterns"></div>
+
+    <div class="grid-2" style="margin-top:20px">
+      <div>
+        <label class="field-label" for="archetype">Post archetype</label>
+        <select id="archetype">
+          <option value="mystery">Mystery / identification</option>
+          <option value="analysis">Analysis / data</option>
+          <option value="story">Story / experience</option>
+          <option value="debate">Debate / opinion</option>
+          <option value="experiment">Experiment / test</option>
+          <option value="showtell">Show &amp; tell</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label" for="evidence">Evidence level</label>
+        <select id="evidence">
+          <option value="0">No evidence yet</option>
+          <option value="1">Specific details only</option>
+          <option value="2">Photo or screenshot</option>
+          <option value="3">Photo + measurements/context</option>
+        </select>
+      </div>
+    </div>
+
+    <label class="field-label" for="body">Body / context</label>
+    <textarea id="body" placeholder="Timeline, location if relevant, what you've already tried, what surprised you, what you still don't know..."></textarea>
+
+    <button class="btn btn-primary" id="scoreBtn">Score this post</button>
+
+    <div class="divider"></div>
+
+    <div class="ai-section">
+      <div class="ai-label"><div class="ai-dot"></div> AI title rewriter</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Score first, then let Claude rewrite your title using your archetype, body context, and the field manual's templates. Click any result to copy it to the title field.</p>
+      <button class="btn btn-ai" id="rewriteBtn" disabled>Rewrite title with AI</button>
+      <div class="ai-thinking" id="aiThinking">✦ Analyzing your post and generating 3 alternatives...</div>
+      <div class="ai-error" id="aiError"></div>
+      <div class="ai-result" id="aiResult">
+        <div class="ai-result-label">3 title alternatives — click to use</div>
+        <div id="aiTitles"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RIGHT: Score card -->
+  <aside class="card">
+    <h2>Engagement score</h2>
+    <p class="card-sub">Weighted across 6 dimensions. Title and curiosity carry the most weight.</p>
+
+    <div class="score-wrap">
+      <div class="score-ring" id="scoreRing" style="--pct:0">
+        <div class="score-num" id="scoreNum">—</div>
+      </div>
+      <div class="verdict-block">
+        <h3 id="verdict">Waiting...</h3>
+        <p id="verdictText">Add a title and body, then score it.</p>
+        <div class="pill-row" id="signals"></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="metrics" id="metrics"></div>
+    <div class="suggestions" id="suggestions"></div>
+  </aside>
+
+  <!-- BOTTOM LEFT: 60-second preflight -->
+  <section class="card checklist" style="grid-column:1">
+    <h2>60-second preflight</h2>
+    <p class="card-sub">Check these before you post. An engaged OP in the first hour is worth 20 upvotes of momentum.</p>
+    <div class="checklist-items" id="checklistItems"></div>
+  </section>
+
+  <!-- BOTTOM RIGHT: Title templates -->
+  <section class="card" style="grid-column:2">
+    <h2>Title templates</h2>
+    <p class="card-sub">Click any template to copy it into the title field.</p>
+    <div class="templates-grid" id="templatesGrid"></div>
+  </section>
+
+</main>
+
+<footer>
+  <span>Reddit OS v2 — no tracking, no backend, no accounts. Just heuristics and mildly obsessive internet anthropology.</span>
+  <span style="color:var(--line)">Built by <a href="https://github.com/ohsusannamarie" target="_blank">@ohsusannamarie</a></span>
+</footer>
+
+<div class="toast" id="toast">Copied to title field</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// ─── Checklist ───────────────────────────────────────────────────────────────
+const CHECKLIST = [
+  "The title would make me stop scrolling.",
+  "The post has novelty, tension, or a clear reason to exist.",
+  "I included concrete evidence: photos, measurements, timeline, or specifics.",
+  "I left room for people to contribute — I didn't solve everything myself.",
+  "The subreddit is a cultural fit, not just the biggest audience.",
+  "The body is easy to skim on mobile — short paragraphs, no walls of text.",
+  "I'm available to respond during the first hour after posting."
+];
+
+const checklistEl = $('checklistItems');
+CHECKLIST.forEach((text, i) => {
+  const div = document.createElement('div');
+  div.className = 'check-item';
+  div.innerHTML = `<input type="checkbox" id="chk${i}"><span>${text}</span>`;
+  div.addEventListener('click', e => {
+    if (e.target.tagName !== 'INPUT') {
+      const cb = div.querySelector('input');
+      cb.checked = !cb.checked;
+    }
+    div.classList.toggle('checked', div.querySelector('input').checked);
+  });
+  checklistEl.appendChild(div);
+});
+
+// ─── Templates ───────────────────────────────────────────────────────────────
+const TEMPLATES = [
+  { name: "Unexpected observation", text: "I've lived here for [timeframe] and suddenly found [specific anomaly]." },
+  { name: "Constraint + tension",   text: "I've ruled out [X], [Y], and [Z]. What am I missing?" },
+  { name: "Analysis / data",        text: "I analyzed [N] [things] and found one pattern I didn't expect." },
+  { name: "Experiment",             text: "I tested [N] ways to [goal]. Here's what actually worked." },
+  { name: "Earned authenticity",    text: "I thought this was [assumption], but [specific detail] makes me think I'm wrong." },
+  { name: "Mistake",                text: "Turns out I've been doing this wrong for [timeframe]." },
+];
+
+const templatesGrid = $('templatesGrid');
+TEMPLATES.forEach(t => {
+  const div = document.createElement('div');
+  div.className = 'template-card';
+  div.innerHTML = `<div class="template-name">${t.name}</div><div class="template-text">${t.text}</div>`;
+  div.addEventListener('click', () => {
+    $('title').value = t.text;
+    updateTitleCounter();
+    showToast('Template copied to title field');
+  });
+  templatesGrid.appendChild(div);
+});
+
+// ─── Title counter + anti-pattern detection ───────────────────────────────────
+const ANTI_PATTERNS = [
+  { re: /^(help|question|interesting|thoughts)\b/i, label: "weak opener" },
+  { re: /\?$/,                                        label: "ends with ?" },
+  { re: /^(a|an|the) /i,                             label: "starts with article" },
+  { re: /\b(stuff|things|something)\b/i,              label: "vague noun" },
+  { re: /^i need help/i,                             label: "passive ask" },
+];
+
+function updateTitleCounter() {
+  const title = $('title').value;
+  const words = countWords(title);
+  const counter = $('titleCounter');
+  counter.textContent = words;
+  counter.className = 'title-counter' + (words > 18 ? ' bad' : words > 14 ? ' warn' : '');
+
+  const patterns = ANTI_PATTERNS.filter(p => p.re.test(title.trim()));
+  const apEl = $('antiPatterns');
+  apEl.innerHTML = patterns.map(p => `<span class="anti-pill">⚠ ${p.label}</span>`).join('');
+}
+
+$('title').addEventListener('input', updateTitleCounter);
+
+// ─── Scoring ──────────────────────────────────────────────────────────────────
+function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+function countWords(t) { return t.trim().split(/\s+/).filter(Boolean).length; }
+
+const ARCHETYPE_WEIGHTS = {
+  mystery:    { curiosity:1.3, credibility:1.1, conversation:1.2 },
+  analysis:   { credibility:1.4, title:1.1, readability:1.1 },
+  story:      { curiosity:1.2, readability:1.2, conversation:0.9 },
+  debate:     { conversation:1.4, curiosity:1.2, credibility:0.9 },
+  experiment: { credibility:1.3, title:1.1, conversation:1.1 },
+  showtell:   { credibility:1.2, community:1.2, readability:1.1 },
+};
+
+function scoreTitle(title, archetype) {
+  const words = countWords(title);
+  let score = 0;
+  if (words >= 8 && words <= 14) score += 50;
+  else if (words >= 5 && words <= 18) score += 32;
+  else score += 10;
+  if (/\d|three|four|five|six|seven|eight|nine|ten|hundred|thousand/i.test(title)) score += 18;
+  if (/suddenly|found|noticed|turns out|unexpected|wrong|missing|ruled out|surprised/i.test(title)) score += 20;
+  if (/^(help|question|interesting|thoughts)\b/i.test(title.trim())) score -= 20;
+  if (/^(a|an|the) /i.test(title.trim())) score -= 8;
+  if (/\b(stuff|things|something)\b/i.test(title)) score -= 10;
+  return clamp(score, 0, 100);
+}
+
+function scoreCuriosity(title, body, archetype) {
+  const text = `${title} ${body}`;
+  let score = 18;
+  if (/why|what|how|missing|anyone|recognize|explain|ruled out|doesn't make sense/i.test(text)) score += 30;
+  if (/but|however|suddenly|never|first time|after|despite|yet/i.test(text)) score += 22;
+  if (/\?/.test(text)) score += 10;
+  if (archetype === 'mystery' || archetype === 'debate') score += 12;
+  if (body.length > 1400) score -= 10;
+  return clamp(score, 0, 100);
+}
+
+function scoreCredibility(body, evidenceLevel, archetype) {
+  let score = Number(evidenceLevel) * 22;
+  if (/\b(day|week|month|year|hour|minute|today|yesterday|morning|night)\b/i.test(body)) score += 12;
+  if (/\b(inch|cm|mm|feet|size|scale|measured|photo|screenshot|location|lived|tried|tested)\b/i.test(body)) score += 18;
+  if (/I don't know|not sure|I ruled out|I've tried|I checked|I'm stumped/i.test(body)) score += 16;
+  if (archetype === 'analysis' || archetype === 'experiment') score += 10;
+  if (countWords(body) < 25) score -= 18;
+  return clamp(score, 0, 100);
+}
+
+function scoreConversation(title, body, archetype) {
+  const text = `${title} ${body}`;
+  let score = 22;
+  if (/what am I missing|has anyone|any ideas|theory|experience|why would|what could/i.test(text)) score += 26;
+  if (/ruled out|tried|tested|compared|different|better|worse|tradeoff/i.test(text)) score += 20;
+  if (archetype === 'mystery' || archetype === 'debate') score += 18;
+  if (archetype === 'analysis' || archetype === 'experiment') score += 10;
+  if (countWords(body) > 60) score += 8;
+  return clamp(score, 0, 100);
+}
+
+function scoreCommunity(sub) {
+  if (!sub.trim()) return 30;
+  let score = 60;
+  if (/^r\//i.test(sub.trim())) score += 12;
+  // Niche specificity signals
+  if (sub.length > 8) score += 10;
+  if (/what|is|this|help|misc|general|random|front|all/i.test(sub)) score -= 15;
+  if (/r\/ask|r\/no|r\/explain/i.test(sub)) score -= 8;
+  return clamp(score, 0, 100);
+}
+
+function scoreReadability(body) {
+  const words = countWords(body);
+  const lines = body.split('\n').filter(l => l.trim()).length;
+  let score = 55;
+  if (words >= 40 && words <= 220) score += 20;
+  if (lines >= 3) score += 14;
+  if (body.includes('- ') || body.includes('* ') || body.includes('\n\n')) score += 10;
+  if (words > 400) score -= 22;
+  if (words < 20) score -= 20;
+  return clamp(score, 0, 100);
+}
+
+const BASE_WEIGHTS = { title:22, curiosity:18, credibility:18, conversation:16, community:12, readability:14 };
+
+function computeScore(scores, archetype) {
+  const aw = ARCHETYPE_WEIGHTS[archetype] || {};
+  let total = 0, wSum = 0;
+  for (const [k, w] of Object.entries(BASE_WEIGHTS)) {
+    const adj = w * (aw[k] || 1);
+    total += scores[k] * adj;
+    wSum += adj;
+  }
+  return Math.round(total / wSum);
+}
+
+function renderMetric(name, value, key) {
+  return `<div class="metric-row">
+    <div class="metric-head"><strong>${name}</strong><span>${value}</span></div>
+    <div class="bar"><div class="bar-fill" style="width:${value}%"></div></div>
+  </div>`;
+}
+
+let lastScored = false;
+
+function scorePost() {
+  const sub = $('subreddit').value.trim();
+  const title = $('title').value.trim();
+  const body = $('body').value.trim();
+  const archetype = $('archetype').value;
+  const evidence = $('evidence').value;
+
+  if (!title) {
+    showToast('Add a title first');
+    return;
+  }
+
+  const scores = {
+    title:        scoreTitle(title, archetype),
+    curiosity:    scoreCuriosity(title, body, archetype),
+    credibility:  scoreCredibility(body, evidence, archetype),
+    conversation: scoreConversation(title, body, archetype),
+    community:    scoreCommunity(sub),
+    readability:  scoreReadability(body),
+  };
+
+  const total = computeScore(scores, archetype);
+
+  $('scoreNum').textContent = total;
+  $('scoreRing').style.setProperty('--pct', total);
+
+  let verdict, verdictText;
+  if (total >= 85)      { verdict = 'Post-worthy';              verdictText = 'Strong odds of earning attention. Stay active in comments for the first hour.'; }
+  else if (total >= 70) { verdict = 'Promising';                verdictText = 'Good foundation. Tighten the weak dimensions before posting.'; }
+  else if (total >= 55) { verdict = 'Interesting, but underbuilt'; verdictText = 'There\'s probably a post here — but it\'s currently asking readers to work too hard.'; }
+  else                  { verdict = 'Needs shaping';             verdictText = 'The raw material may be there. Work the suggestions below before posting.'; }
+
+  $('verdict').textContent = verdict;
+  $('verdictText').textContent = verdictText;
+
+  const tw = countWords(title);
+  const sigs = [
+    `<span class="pill ${tw >= 8 && tw <= 14 ? 'good' : 'warn'}">${tw} title words</span>`,
+    `<span class="pill ${evidence >= 2 ? 'good' : 'warn'}">evidence: ${$('evidence').selectedOptions[0].text.toLowerCase()}</span>`,
+    `<span class="pill ${sub ? 'good' : 'bad'}">${sub || 'no subreddit'}</span>`,
+    `<span class="pill ${archetype}">${archetype}</span>`,
+  ];
+  $('signals').innerHTML = sigs.join('');
+
+  $('metrics').innerHTML = [
+    renderMetric('Title strength', scores.title),
+    renderMetric('Curiosity gap', scores.curiosity),
+    renderMetric('Credibility stack', scores.credibility),
+    renderMetric('Conversation surface area', scores.conversation),
+    renderMetric('Community fit', scores.community),
+    renderMetric('Readability', scores.readability),
+  ].join('');
+
+  const suggs = [];
+  if (scores.title < 70)        suggs.push(['Title', 'Add specificity — a number, timeframe, unexpected observation, or constraint. Avoid openers like "Help," "Question," or vague nouns like "something."']);
+  if (scores.curiosity < 70)    suggs.push(['Curiosity gap', 'Introduce unresolved tension. What doesn\'t make sense? What did you rule out? What are you still trying to understand?']);
+  if (scores.credibility < 70)  suggs.push(['Credibility', 'Add proof: a photo, measurement, timeframe, location, or what you already tried. People trust investigations, not unsupported claims.']);
+  if (scores.conversation < 70) suggs.push(['Comments', 'Leave room for people to contribute. Ask for theories, similar experiences, or expert interpretation — don\'t solve everything yourself.']);
+  if (scores.community < 70)    suggs.push(['Subreddit fit', 'A perfect post in the wrong subreddit dies quietly. Spend five minutes studying the top posts this month before choosing.']);
+  if (scores.readability < 70)  suggs.push(['Readability', 'Break the body into short paragraphs. Mobile readers are allergic to walls of text — and honestly, fair.']);
+
+  $('suggestions').innerHTML = suggs.length
+    ? suggs.map(([label, text]) => `<div class="suggestion"><strong>${label}</strong>${text}</div>`).join('')
+    : '<div class="suggestion"><strong>Ready</strong>This is solid. Your biggest lever now is subreddit choice and staying active in comments.</div>';
+
+  lastScored = true;
+  $('rewriteBtn').disabled = false;
+}
+
+$('scoreBtn').addEventListener('click', scorePost);
+
+// ─── AI Title Rewriter ────────────────────────────────────────────────────────
+$('rewriteBtn').addEventListener('click', async () => {
+  const title = $('title').value.trim();
+  const body = $('body').value.trim();
+  const archetype = $('archetype').value;
+  const sub = $('subreddit').value.trim();
+
+  if (!title) { showToast('Add a title first'); return; }
+
+  $('rewriteBtn').disabled = true;
+  $('aiThinking').classList.add('visible');
+  $('aiResult').classList.remove('visible');
+  $('aiError').classList.remove('visible');
+
+  const archetypeDescriptions = {
+    mystery:    'Mystery / identification — recruit experts, leave the answer open',
+    analysis:   'Analysis / data — reveal an unexpected pattern from evidence',
+    story:      'Story / experience — create emotional investment through personal narrative',
+    debate:     'Debate / opinion — invite thoughtful disagreement',
+    experiment: 'Experiment / test — provide evidence from a structured test',
+    showtell:   'Show & tell — share something worth seeing with the right community',
+  };
+
+  const prompt = `You are an expert Reddit post title writer. Your job is to rewrite a draft Reddit title into 3 stronger alternatives.
+
+ORIGINAL TITLE: "${title}"
+POST ARCHETYPE: ${archetypeDescriptions[archetype]}
+SUBREDDIT: ${sub || 'not specified'}
+BODY CONTEXT: "${body.slice(0, 400) || 'not provided'}"
+
+RULES FOR GREAT REDDIT TITLES:
+- 8–14 words is the sweet spot
+- Lead with specificity: numbers, timelines, constraints, unexpected findings
+- Create a curiosity gap without being clickbait
+- Match the archetype — mystery titles invite experts, analysis titles reveal patterns, debate titles frame a tension
+- Never start with "Help", "Question", "Interesting", or an article (A/An/The)
+- Avoid vague nouns: "something", "stuff", "things"
+- Use tension words: "suddenly", "ruled out", "turns out", "doesn't make sense", "I wasn't expecting"
+
+Respond ONLY with a JSON array of exactly 3 objects. No preamble, no explanation, no markdown fences. Pure JSON only:
+[
+  {"angle": "brief angle name (3-5 words)", "title": "the rewritten title"},
+  {"angle": "brief angle name", "title": "the rewritten title"},
+  {"angle": "brief angle name", "title": "the rewritten title"}
+]`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `API error ${res.status}`);
+    }
+
+    const data = await res.json();
+    const raw = data.content?.find(b => b.type === 'text')?.text || '';
+
+    // Strip any accidental markdown fences
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const options = JSON.parse(clean);
+
+    if (!Array.isArray(options) || options.length === 0) throw new Error('Unexpected response format');
+
+    const titlesEl = $('aiTitles');
+    titlesEl.innerHTML = options.map(opt => `
+      <div class="ai-title-option" data-title="${opt.title.replace(/"/g, '&quot;')}">
+        <div class="option-meta">↳ ${opt.angle}</div>
+        <div class="option-text">${opt.title}</div>
+      </div>
+    `).join('');
+
+    titlesEl.querySelectorAll('.ai-title-option').forEach(el => {
+      el.addEventListener('click', () => {
+        $('title').value = el.dataset.title;
+        updateTitleCounter();
+        showToast('Title applied — re-score to update your metrics');
+        scorePost();
+      });
+    });
+
+    $('aiResult').classList.add('visible');
+  } catch (err) {
+    $('aiError').textContent = `Something went wrong: ${err.message}`;
+    $('aiError').classList.add('visible');
+  } finally {
+    $('aiThinking').classList.remove('visible');
+    $('rewriteBtn').disabled = false;
+  }
+});
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+</script>
+</body>
+</html>
